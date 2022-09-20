@@ -1,5 +1,5 @@
 <script>
-	import { cars, uid } from '../lib/stores.js';
+	import { cars, uid, afterSubmit } from '../lib/stores.js';
 	import { afterUpdate } from 'svelte';
 
 	let car = {};
@@ -7,8 +7,9 @@
 	let focusedItem;
 
 	afterUpdate(() => {
-		if (focusedItem) {
-			focusedItem = $cars.find((item) => item.uid == focusedItem.uid);
+		if ($afterSubmit) {
+			focusedItem = $cars.find((item) => item.uid == $afterSubmit.uid);
+			$afterSubmit = null;
 			if (focusedItem) {
 				let elem = document.getElementById('cars_list_' + focusedItem.uid);
 				elem && elem.focus();
@@ -25,7 +26,7 @@
 			}
 		];
 
-		focusedItem = $cars.find((item) => item.uid == $uid);
+		$afterSubmit = $cars.find((item) => item.uid == $uid);
 		$uid++;
 	};
 

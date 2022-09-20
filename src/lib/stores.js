@@ -2,6 +2,7 @@ import { writable } from 'svelte/store';
 import { browser } from '$app/environment';
 
 export const uid = writable(browser && (localStorage.getItem("cars_id") || 2));
+export const afterSubmit = writable({});
 
 const json = browser && localStorage.getItem("cars");
 let storedCars = json ? JSON.parse(json) : null;
