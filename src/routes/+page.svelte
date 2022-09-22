@@ -1,35 +1,52 @@
 <script>
 	import { cars, uid, afterSubmit } from '$lib/stores.js';
-	import { afterUpdate } from 'svelte';
-	import { fly, fade } from 'svelte/transition';
+	import { afterUpdate, onMount } from 'svelte';
+	import { fly } from 'svelte/transition';
+
+	import { goto } from '$app/navigation';
+	import { page } from '$app/stores';
 
 	let car = {};
 	let fileinput;
 	let focusedItem;
 	let outroEnd = true;
 
+	let params;
+
+	onMount(() => {
+		params = new URLSearchParams($page.url.searchParams.toString());
+		handleItemFocus($cars.find(item => params.get('uid') == item.uid));
+		if (focusedItem) {
+			let elem = document.getElementById('cars_list_' + focusedItem.uid);
+			elem && elem.focus();
+		}
+	});
+	
 	afterUpdate(() => {
 		if ($afterSubmit) {
 			focusedItem = $cars.find((item) => item.uid == $afterSubmit.uid);
 			$afterSubmit = null;
-			if (focusedItem) {
-				let elem = document.getElementById('cars_list_' + focusedItem.uid);
-				elem && elem.focus();
-			}
 		}
 	});
 
 	const handleSubmit = (e) => {
+		car.uid = $uid;
 		$cars = [
 			...$cars,
 			{
-				uid: $uid,
 				...car
 			}
 		];
-
+		
 		$afterSubmit = $cars.find((item) => item.uid == $uid);
 		$uid++;
+
+		for (let key in car) {
+			if (key != 'avatar') {
+				$page.url.searchParams.set(`${key}`, `${car[key]}`);
+			}
+		}
+		goto(`?${$page.url.searchParams.toString()}`);
 	};
 
 	const onFileSelected = (e) => {
@@ -43,6 +60,12 @@
 
 	const handleItemFocus = (item = null) => {
 		focusedItem = item;
+		if (item) {
+			$page.url.searchParams.set('uid', `${item.uid}`);
+			//goto(`?${$page.url.searchParams.toString()}`);
+		} else {
+			// goto('/');
+		}
 	};
 
 	const handleRemoveCar = (item) => {
@@ -59,17 +82,23 @@
 					<label for="cars_brand">Značka:</label>
 					<input type="text" bind:value={car.brand} id="cars_brand" placeholder="Značka" required />
 				</div>
-	
+
 				<div>
 					<label for="cars_model">Model:</label>
 					<input type="text" bind:value={car.model} id="cars_model" placeholder="Model" required />
 				</div>
-	
+
 				<div>
 					<label for="cars_year">Rok výroby:</label>
-					<input type="number" bind:value={car.year} id="cars_year" placeholder="Rok výroby" required />
+					<input
+						type="number"
+						bind:value={car.year}
+						id="cars_year"
+						placeholder="Rok výroby"
+						required
+					/>
 				</div>
-	
+
 				<div>
 					<label for="cars_image">Obrázek:</label>
 					<span class="file-input-text" on:click={() => fileinput.click()}>Vložit obrázek</span>
@@ -90,27 +119,32 @@
 							tabindex="1"
 							id={`cars_list_${item.uid}`}
 							class="cars_list-item"
-							on:focus={() => handleItemFocus(item)}
+							on:focusin={() => handleItemFocus(item)}
+							on:focusout={() => handleItemFocus()}
 						>
 							{`${item.brand} ${item.model} ${item.year}`}
 						</div>
-						<button class="list-remove-button" on:click={() => handleRemoveCar(item)}>&times;</button>
+						<button class="list-remove-button" on:click={() => handleRemoveCar(item)}
+							>&times;</button
+						>
 					</div>
 				{/each}
 			</div>
 		</div>
-	
-		<div class="cars-content">	
+
+		<div class="cars-content">
 			<div id="cars_details">
 				<h1>Detail vozidla</h1>
-				{#if focusedItem && outroEnd }
-					{#key focusedItem }
-					<img in:fly="{{x: 200, duration: 250}}" out:fly="{{y: 200, duration: 250}}"
-						on:outroend={() => outroEnd = true}
-						on:outrostart={() => outroEnd = false}
-						src={focusedItem.avatar ? focusedItem.avatar : '/car_placeholder.png'}
-						alt="The selected car"
-					/>
+				{#if focusedItem && outroEnd}
+					{#key focusedItem}
+						<img
+							in:fly={{ x: 200, duration: 250 }}
+							out:fly={{ y: 200, duration: 250 }}
+							on:outroend={() => (outroEnd = true)}
+							on:outrostart={() => (outroEnd = false)}
+							src={focusedItem.avatar ? focusedItem.avatar : '/car_placeholder.png'}
+							alt="The selected car"
+						/>
 					{/key}
 					<p>{`${focusedItem.brand} ${focusedItem.model} ${focusedItem.year}`}</p>
 					<button on:click={() => handleRemoveCar(focusedItem)}>Smazat</button>
@@ -139,24 +173,26 @@
 		background-color: rgba(0, 85, 10, 0.3);
 	}
 
-	.cars_list-item:focus, .cars_list-item:hover {
+	.cars_list-item:focus,
+	.cars_list-item:hover {
 		border: 1px solid #52796f;
 		border-radius: 5px;
 		padding: 0 4px;
 	}
 
-	main, button {
+	main,
+	button {
 		color: white;
 		font-family: 'Nunito';
 	}
-	
+
 	.main {
 		display: flex;
 		flex-direction: column;
 		align-items: center;
 		justify-content: center;
 		height: 100vh;
-		background: #1A1B2A;
+		background: #1a1b2a;
 	}
 
 	.content-box {
@@ -173,10 +209,11 @@
 		margin-top: 20px;
 	}
 
-	.content-box, .cars_form-submit button {
+	.content-box,
+	.cars_form-submit button {
 		filter: drop-shadow(0px 4px 4px rgba(0, 0, 0, 0.25));
-		background: rgb(0,44,75);
-		background: linear-gradient(90deg, rgba(0,44,75,1) 0%, #00550a80 100%);
+		background: rgb(0, 44, 75);
+		background: linear-gradient(90deg, rgba(0, 44, 75, 1) 0%, #00550a80 100%);
 	}
 
 	.cars_form-submit button {
@@ -194,7 +231,6 @@
 	.cars_form-submit button:hover {
 		cursor: pointer;
 	}
-
 
 	#cars_form {
 		display: flex;
@@ -235,7 +271,7 @@
 	}
 
 	#cars_list::-webkit-scrollbar-track {
-		background-color: #FFFFFF;
+		background-color: #ffffff;
 		border-radius: 5px;
 	}
 
@@ -285,16 +321,17 @@
 		padding: 8px 24px;
 		border-radius: 50px;
 		box-shadow: 0 0 6px rgba(0, 0, 0, 0.6);
-		background: rgb(0,44,75);
+		background: rgb(0, 44, 75);
 		cursor: pointer;
-		border: none
+		border: none;
 	}
 
 	#cars_details button:hover {
 		box-shadow: inset 0 0 6px rgba(0, 0, 0, 0.6);
 	}
 
-	input[type="text"], input[type="number"] {
+	input[type='text'],
+	input[type='number'] {
 		background: white;
 		border: 2px solid rgba(0, 85, 10, 0.5);
 		border-radius: 8px;
